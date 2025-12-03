@@ -43,8 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-repomix.config.json
 repomix-output.txt
-.repomixignore
 
 /src/generated/prisma
