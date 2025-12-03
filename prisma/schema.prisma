@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -28,17 +28,18 @@ model Account {
   type               String
   provider           String
   providerAccountId  String
-  refresh_token      String? 
-  access_token       String? 
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
   expires_at         Int?
   token_type         String?
   scope              String?
-  id_token           String?
+  id_token           String? @db.Text
   session_state      String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -47,25 +48,26 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // --- 博客核心功能 ---
 
-// 文章动态数据（浏览量、点赞数）
-// 静态内容存储于 .mdx 文件，此处仅存储 slug 作为外键索引
+// 文章动态数据
 model PostStat {
-  slug      String    @id
-  views     Int       @default(0)
+  slug      String     @id @db.VarChar(191)
+  views     Int        @default(0)
   comments  Comment[]
   likes     Like[]
   tags      PostTag[]
-  viewLogs  PostView[] // 浏览记录用于统计与防护
+  viewLogs  PostView[]
 }
 
 // 评论系统
 model Comment {
   id        String   @id @default(cuid())
-  content   String
+  content   String   @db.Text
   createdAt DateTime @default(now())
   
   userId    String
@@ -73,9 +75,12 @@ model Comment {
   
   postSlug  String
   post      PostStat @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([postSlug])
 }
 
-// 点赞记录 (唯一性约束)
+// 点赞记录
 model Like {
   id        String   @id @default(cuid())
   userId    String
@@ -85,28 +90,32 @@ model Like {
   post      PostStat @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
 
   @@unique([userId, postSlug])
+  @@index([postSlug])
+  @@index([userId])
 }
 
 // --- 标签系统 ---
 
 model Tag {
   id    String    @id @default(cuid())
-  name  String    @unique // 标签名，如 "恐怖", "预知梦"
+  name  String    @unique
   posts PostTag[]
 }
 
-// 文章与标签关联表 (含计数缓存)
+// 文章与标签关联表
 model PostTag {
   id        String   @id @default(cuid())
   postSlug  String
   tagId     String
-  count     Int      @default(0) // 被标记/投票次数
+  count     Int      @default(0)
 
   post      PostStat @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
   tag       Tag      @relation(fields: [tagId], references: [id])
   votes     UserTagVote[]
 
-  @@unique([postSlug, tagId]) // 一篇文章下的同一个标签只能有一条记录
+  @@unique([postSlug, tagId])
+  @@index([tagId])
+  @@index([postSlug])
 }
 
 // 用户标签投票记录
@@ -118,18 +127,19 @@ model UserTagVote {
   user      User     @relation(fields: [userId], references: [id])
   postTag   PostTag  @relation(fields: [postTagId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, postTagId]) // 一个用户对一个文章的一个标签只能投一次
+  @@unique([userId, postTagId])
+  @@index([postTagId])
+  @@index([userId])
 }
 
 // --- 浏览记录表 ---
 model PostView {
   id        String   @id @default(cuid())
   postSlug  String
-  ip        String   // 访问者 IP，用于简单的防刷限制
+  ip        String   @db.VarChar(45)
   viewedAt  DateTime @default(now())
 
   post      PostStat @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
 
-  // 联合索引加速查询
   @@index([postSlug, ip, viewedAt])
 }

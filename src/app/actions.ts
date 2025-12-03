@@ -164,7 +164,7 @@ export async function getPostTags(slug: string) {
     where: { postSlug: slug },
     include: {
       tag: true,
-      votes: userId ? { where: { userId } } : [],
+      votes: userId ? { where: { userId } } : false,
     },
     orderBy: { count: 'desc' },
   });
