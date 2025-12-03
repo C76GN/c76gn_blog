@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  blog:
+    build: .
+    container_name: c76gn-blog
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      # 持久化数据库：宿主机 ./data -> 容器 /app/data
+      - ./data:/app/data
+      # 如果你有大量的 content 经常变动，也可以挂载 content 目录
+      # - ./content:/app/content 
+    environment:
+      - AUTH_SECRET=你的next-auth-secret
+      - AUTH_GITHUB_ID=你的github-id
+      - AUTH_GITHUB_SECRET=你的github-secret
+      # 这里覆盖 Dockerfile 里的默认值，确保指向挂载的目录
+      - DATABASE_URL="file:/app/data/prod.db" 
+      - CRON_SECRET=你的cron-secret
+

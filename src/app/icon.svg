@@ -1,0 +1,13 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景：深色圆角矩形 -->
+  <rect width="256" height="256" rx="50" fill="#141414"/>
+  
+  <!-- 字母 C：加粗设计 -->
+  <path 
+    d="M170 80 C 160 65, 145 55, 128 55 C 85 55, 55 90, 55 128 C 55 166, 85 201, 128 201 C 145 201, 160 191, 170 176" 
+    stroke="#FF3333" 
+    stroke-width="35" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+</svg>

@@ -1,26 +1,81 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* 
+  Tailwind v4 配置区域 
+  主题变量与自定义配置
+*/
+@theme {
+  /* FBC (Federal Bureau of Control) 色板 */
+  --color-fbc-dark: #141414;
+  /* 深灰黑背景 */
+  --color-fbc-gray: #242424;
+  /* 侧边栏/卡片背景 */
+  --color-fbc-border: #333333;
+  /* 边框颜色 */
+  --color-fbc-text: #E0E0E0;
+  /* 主要文字 */
+  --color-fbc-muted: #888888;
+  /* 次要文字 */
+  --color-fbc-red: #FF3333;
+  /* 警告/强调红 */
+  --color-fbc-yellow: #FFD700;
+  /* 复古档案黄 */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  /* 字体映射 */
   --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* 
+  自定义 Utility 类 
+*/
+@utility bg-noise {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* 
+  全局基础样式 
+*/
+:root {
+  /* 强制深色模式变量 */
+  --background: var(--color-fbc-dark);
+  --foreground: var(--color-fbc-text);
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  /* CRT 显示器微发光质感 */
+  text-shadow: 0 0 1px rgba(224, 224, 224, 0.1);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 滚动条美化 (机密文档风格) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-fbc-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-fbc-red);
+  /* 悬浮变红 */
 }

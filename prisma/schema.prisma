@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// --- 用户系统 (适配 NextAuth.js) ---
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  comments      Comment[]
+  likes         Like[]
+  tagVotes      UserTagVote[]
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? 
+  access_token       String? 
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// --- 博客核心功能 ---
+
+// 文章动态数据（浏览量、点赞数）
+// 静态内容存储于 .mdx 文件，此处仅存储 slug 作为外键索引
+model PostStat {
+  slug      String    @id
+  views     Int       @default(0)
+  comments  Comment[]
+  likes     Like[]
+  tags      PostTag[]
+  viewLogs  PostView[] // 浏览记录用于统计与防护
+}
+
+// 评论系统
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  postSlug  String
+  post      PostStat @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+}
+
+// 点赞记录 (唯一性约束)
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postSlug  String
+  
+  user      User     @relation(fields: [userId], references: [id])
+  post      PostStat @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+
+  @@unique([userId, postSlug])
+}
+
+// --- 标签系统 ---
+
+model Tag {
+  id    String    @id @default(cuid())
+  name  String    @unique // 标签名，如 "恐怖", "预知梦"
+  posts PostTag[]
+}
+
+// 文章与标签关联表 (含计数缓存)
+model PostTag {
+  id        String   @id @default(cuid())
+  postSlug  String
+  tagId     String
+  count     Int      @default(0) // 被标记/投票次数
+
+  post      PostStat @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id])
+  votes     UserTagVote[]
+
+  @@unique([postSlug, tagId]) // 一篇文章下的同一个标签只能有一条记录
+}
+
+// 用户标签投票记录
+model UserTagVote {
+  id        String   @id @default(cuid())
+  userId    String
+  postTagId String
+  
+  user      User     @relation(fields: [userId], references: [id])
+  postTag   PostTag  @relation(fields: [postTagId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postTagId]) // 一个用户对一个文章的一个标签只能投一次
+}
+
+// --- 浏览记录表 ---
+model PostView {
+  id        String   @id @default(cuid())
+  postSlug  String
+  ip        String   // 访问者 IP，用于简单的防刷限制
+  viewedAt  DateTime @default(now())
+
+  post      PostStat @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+
+  // 联合索引加速查询
+  @@index([postSlug, ip, viewedAt])
+}
