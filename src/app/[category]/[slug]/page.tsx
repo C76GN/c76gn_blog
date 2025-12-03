@@ -7,6 +7,7 @@ import Interactions from "@/components/Interactions";
 import CommentSection from "@/components/CommentSection";
 import TagSystem from "@/components/TagSystem";
 import Image from "next/image";
+import { Suspense } from "react";
 
 // 预生成静态路径（SSG）
 export async function generateStaticParams() {
@@ -19,7 +20,7 @@ export async function generateStaticParams() {
   ];
 }
 
-// 自定义 MDX 组件
+// 自定义 MDX 组件配置
 const mdxComponents = {
   img: (props: any) => {
     return (
@@ -44,28 +45,63 @@ const mdxComponents = {
   },
 };
 
+// --- 异步加载包装组件 ---
+
+// 标签系统加载器
+async function AsyncTagSystem({ slug }: { slug: string }) {
+  const initialTags = await getPostTags(slug);
+  return <TagSystem slug={slug} initialTags={initialTags} />;
+}
+
+// 评论区域加载器
+async function AsyncCommentSection({ slug, compact }: { slug: string, compact?: boolean }) {
+  const initialComments = await getComments(slug);
+  return <CommentSection slug={slug} initialComments={initialComments} compact={compact} />;
+}
+
+// --- 加载状态骨架屏 ---
+
+function TagSkeleton() {
+  return (
+    <div className="mb-8 animate-pulse">
+      <div className="h-4 w-16 bg-fbc-border/50 rounded mb-4"></div>
+      <div className="h-24 bg-fbc-gray border border-fbc-border/50"></div>
+    </div>
+  );
+}
+
+function CommentSkeleton({ compact }: { compact?: boolean }) {
+  return (
+    <div className={`animate-pulse ${compact ? "mt-0" : "mt-12"}`}>
+      <div className="h-4 w-32 bg-fbc-border/50 rounded mb-4"></div>
+      <div className={`bg-fbc-gray border border-fbc-border/50 mb-8 ${compact ? "h-20" : "h-32"}`}></div>
+      <div className="space-y-4">
+        <div className="h-16 bg-fbc-gray/30 rounded border-l border-fbc-border/30"></div>
+        <div className="h-16 bg-fbc-gray/30 rounded border-l border-fbc-border/30"></div>
+      </div>
+    </div>
+  );
+}
+
+// --- 主页面组件 ---
+
 export default async function PostPage(props: {
   params: Promise<{ category: "dreams" | "poems"; slug: string }>;
 }) {
   const params = await props.params;
+
+  // 仅获取静态文章内容，不阻塞页面渲染
   const post = getPostBySlug(params.category, params.slug);
 
   if (!post) {
     notFound();
   }
 
-  // 构建完整的 slug（category/slug 格式）
+  // 构建完整的 slug 标识
   const fullSlug = `${params.category}/${post.slug}`;
-
-  // 并行获取动态数据
-  const [initialComments, initialTags] = await Promise.all([
-    getComments(fullSlug),
-    getPostTags(fullSlug)
-  ]);
 
   return (
     <article className="animate-in fade-in duration-700 min-h-screen w-full">
-
       {/* 文章头部信息 */}
       <header className="mb-10 border-b border-fbc-border pb-6">
         <h1 className="text-3xl md:text-5xl font-black text-fbc-text uppercase tracking-tight leading-tight mb-4">
@@ -74,14 +110,17 @@ export default async function PostPage(props: {
         <div className="flex items-center gap-6 text-xs font-mono text-fbc-muted uppercase">
           <span className="flex items-center gap-2">
             <span className="w-2 h-2 bg-fbc-red"></span>
-            {/* 优先展示 period 字段，降级展示 date */}
             {post.metadata.period || post.metadata.date || "未知时间"}
           </span>
+          {/* Interactions 为客户端组件，且内部自行管理状态，不阻塞 */}
           <Interactions slug={fullSlug} inline={true} />
         </div>
       </header>
 
+      {/* 布局区域：左侧正文，右侧侧边栏（大屏） */}
       <div className="lg:grid lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_400px] gap-8 xl:gap-12 relative w-full">
+
+        {/* 主要内容区域 */}
         <div className="min-w-0">
           <div className="prose prose-invert prose-lg max-w-none 
             prose-headings:font-bold prose-headings:uppercase
@@ -94,17 +133,28 @@ export default async function PostPage(props: {
             )}
           </div>
 
+          {/* 移动端底部交互区域 */}
           <div className="lg:hidden mt-12">
-            <TagSystem slug={fullSlug} initialTags={initialTags} />
-            <CommentSection slug={fullSlug} initialComments={initialComments} />
+            <Suspense fallback={<TagSkeleton />}>
+              <AsyncTagSystem slug={fullSlug} />
+            </Suspense>
+            <Suspense fallback={<CommentSkeleton />}>
+              <AsyncCommentSection slug={fullSlug} />
+            </Suspense>
           </div>
         </div>
 
+        {/* 桌面端侧边固定区域 */}
         <aside className="hidden lg:block">
           <div className="sticky top-12 space-y-12">
-            <TagSystem slug={fullSlug} initialTags={initialTags} />
+            <Suspense fallback={<TagSkeleton />}>
+              <AsyncTagSystem slug={fullSlug} />
+            </Suspense>
+
             <div className="max-h-[calc(100vh-300px)] overflow-y-auto pr-2 custom-scrollbar">
-              <CommentSection slug={fullSlug} initialComments={initialComments} compact={true} />
+              <Suspense fallback={<CommentSkeleton compact={true} />}>
+                <AsyncCommentSection slug={fullSlug} compact={true} />
+              </Suspense>
             </div>
           </div>
         </aside>
@@ -112,4 +162,3 @@ export default async function PostPage(props: {
     </article>
   );
 }
-
