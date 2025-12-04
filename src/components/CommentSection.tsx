@@ -173,7 +173,7 @@ export default function CommentSection({
     <div className={compact ? "mt-0" : "mt-12"}>
       <h3 className="text-sm font-mono font-bold text-fbc-muted uppercase mb-4 tracking-widest flex items-center gap-2">
         <span className="w-2 h-2 bg-fbc-red animate-pulse"></span>
-        <span>评论档案 (</span>
+        <span>评论 (</span>
         <GlitchText
           text={comments.length}
           isLoading={isCommentsLoading}
@@ -221,7 +221,7 @@ export default function CommentSection({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={!session}
-              placeholder={session ? "添加新的档案批注..." : "需登录后评论..."}
+              placeholder={session ? "说点什么吧..." : "需登录后评论..."}
               className={`w-full bg-fbc-dark border border-fbc-border p-3 text-fbc-text focus:border-fbc-red font-mono text-xs mb-2 transition-opacity ${compact ? "min-h-[80px]" : "min-h-[100px]"
                 } ${!session ? "opacity-50 cursor-not-allowed" : ""}`}
             />

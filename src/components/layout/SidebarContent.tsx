@@ -100,7 +100,7 @@ export default function SidebarContent({ dreams, poems }: { dreams: Post[]; poem
         `}
       >
         <div className="flex-none p-4 border-b border-fbc-border flex items-center justify-between h-16">
-          <Link href="/" scroll={false} className="overflow-hidden flex items-center">
+          <Link href="/" scroll={false} prefetch={false} className="overflow-hidden flex items-center">
             {isCollapsed ? (
               <span className="text-xl font-black text-fbc-red mx-auto">C.</span>
             ) : (
