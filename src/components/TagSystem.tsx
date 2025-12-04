@@ -1,18 +1,11 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { voteTag, getPostTags } from "@/app/actions";
+import { voteTag, type TagData } from "@/app/actions";
 import { useSession } from "next-auth/react";
 import { Plus } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import AuthStatusLoader from "@/components/ui/AuthStatusLoader";
-
-type Tag = {
-  id: string;
-  name: string;
-  count: number;
-  hasVoted: boolean;
-};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -35,33 +28,16 @@ const tagVariants = {
   },
 };
 
-export default function TagSystem({ slug, initialTags }: { slug: string; initialTags: Tag[] }) {
-  const { data: session, status } = useSession();
+export default function TagSystem({ slug, initialTags }: { slug: string; initialTags: TagData[] }) {
+  const { data: session } = useSession();
   const [tags, setTags] = useState(initialTags);
   const [input, setInput] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
-  const [previousTags, setPreviousTags] = useState(initialTags);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        const data = await getPostTags(slug);
-        setTags(data);
-      } catch (e) {
-        console.error("Failed to fetch tags", e);
-      } finally {
-        setTimeout(() => setIsLoaded(true), 300);
-      }
-    };
-
-    if (initialTags.length === 0) {
-      fetchTags();
-    } else {
-      setTimeout(() => setIsLoaded(true), 300);
-    }
-  }, [slug, initialTags]);
+    setTags(initialTags);
+  }, [initialTags]);
 
   const userVoteCount = tags.filter((t) => t.hasVoted).length;
   const remainingVotes = 2 - userVoteCount;
@@ -77,8 +53,8 @@ export default function TagSystem({ slug, initialTags }: { slug: string; initial
     }
 
     setError("");
-    setPreviousTags(tags);
 
+    const previousTags = tags;
     const existingTagIndex = tags.findIndex((t) => t.name === tagName);
     let newTags;
     if (existingTagIndex !== -1) {
@@ -91,7 +67,7 @@ export default function TagSystem({ slug, initialTags }: { slug: string; initial
       };
       newTags.sort((a, b) => b.count - a.count);
     } else {
-      const newTag: Tag = {
+      const newTag: TagData = {
         id: Math.random().toString(),
         name: tagName,
         count: 1,
@@ -125,7 +101,7 @@ export default function TagSystem({ slug, initialTags }: { slug: string; initial
         className="mb-8 bg-fbc-gray border border-fbc-border p-6 overflow-hidden"
         style={{ minHeight: "120px" }}
         initial="hidden"
-        animate={isLoaded ? "show" : "hidden"}
+        animate="show"
       >
         <motion.div variants={containerVariants} className="flex flex-wrap gap-2 mb-4">
           {tags.map((tag) => (

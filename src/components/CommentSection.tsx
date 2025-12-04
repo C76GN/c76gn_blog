@@ -2,21 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { postComment, getComments } from "@/app/actions";
+import { postComment, type CommentData } from "@/app/actions";
 import { LoginButton, LogoutButton } from "./AuthButton";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import AuthStatusLoader from "@/components/ui/AuthStatusLoader";
 import GlitchText from "@/components/ui/GlitchText";
 import { MessageSquare, CornerDownRight } from "lucide-react";
-
-type Comment = {
-  id: string;
-  content: string;
-  createdAt: Date;
-  parentId: string | null;
-  user: { name: string | null; image: string | null };
-};
 
 const listVariants = {
   hidden: { opacity: 0 },
@@ -30,33 +22,22 @@ const itemVariants = {
 
 export default function CommentSection({
   slug,
+  initialComments,
   compact = false,
 }: {
   slug: string;
+  initialComments: CommentData[];
   compact?: boolean;
 }) {
   const { data: session } = useSession();
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<CommentData[]>(initialComments);
   const [input, setInput] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCommentsLoading, setIsCommentsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsCommentsLoading(true);
-      try {
-        const data = await getComments(slug);
-        setComments(data as unknown as Comment[]);
-      } catch (error) {
-        console.error("Failed to fetch comments", error);
-      } finally {
-        setIsCommentsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [slug]);
+    setComments(initialComments);
+  }, [initialComments]);
 
   const handleSubmit = async (e: React.FormEvent, parentId?: string) => {
     e.preventDefault();
@@ -66,11 +47,10 @@ export default function CommentSection({
     try {
       await postComment(slug, input, parentId);
 
-      // 乐观更新 UI
-      const newComment = {
+      const newComment: CommentData = {
         id: Math.random().toString(),
         content: input,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
         parentId: parentId || null,
         user: {
           name: session.user.name || "我",
@@ -86,12 +66,9 @@ export default function CommentSection({
     }
   };
 
-  // 整理评论树（仅做一层嵌套）
-  // 找出所有根评论，然后将它们的子评论附带在后面渲染
   const rootComments = comments.filter(c => !c.parentId);
 
-  // 渲染单个评论项的组件
-  const CommentItem = ({ comment, isReply = false }: { comment: Comment, isReply?: boolean }) => {
+  const CommentItem = ({ comment, isReply = false }: { comment: CommentData, isReply?: boolean }) => {
     const isReplyingToThis = replyTo === comment.id;
 
     return (
@@ -109,7 +86,6 @@ export default function CommentSection({
             </span>
           </div>
 
-          {/* 回复按钮 - 仅在登录且非回复状态显示，或者允许无限层级但UI只有两层 */}
           {session && !isReply && (
             <button
               onClick={() => setReplyTo(isReplyingToThis ? null : comment.id)}
@@ -125,7 +101,6 @@ export default function CommentSection({
           {comment.content}
         </p>
 
-        {/* 内嵌回复框 */}
         <AnimatePresence>
           {isReplyingToThis && (
             <motion.form
@@ -176,14 +151,13 @@ export default function CommentSection({
         <span>评论 (</span>
         <GlitchText
           text={comments.length}
-          isLoading={isCommentsLoading}
+          isLoading={false}
           minWidth="min-w-[2ch]"
           className="text-fbc-text"
         />
         <span>)</span>
       </h3>
 
-      {/* 主评论输入框 - 只有在没有回复特定人时显示 */}
       {!replyTo && (
         <div className={`mb-8 bg-fbc-gray border border-fbc-border ${compact ? "p-4" : "p-6"}`}>
           <AuthStatusLoader
@@ -240,38 +214,30 @@ export default function CommentSection({
         </div>
       )}
 
-      {isCommentsLoading ? (
-        <div className="space-y-6 animate-pulse opacity-50 text-xs font-mono text-fbc-muted">
-          读取中...
-        </div>
-      ) : (
-        <motion.div variants={listVariants} initial="hidden" animate="show">
-          {rootComments.map((root) => {
-            // 查找该根评论的所有子评论
-            const children = comments.filter(c => c.parentId === root.id);
+      <motion.div variants={listVariants} initial="hidden" animate="show">
+        {rootComments.map((root) => {
+          const children = comments.filter(c => c.parentId === root.id);
 
-            return (
-              <div key={root.id}>
-                <CommentItem comment={root} />
-                {/* 渲染子评论容器 */}
-                {children.length > 0 && (
-                  <div className="relative">
-                    {children.map(child => (
-                      <CommentItem key={child.id} comment={child} isReply={true} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          return (
+            <div key={root.id}>
+              <CommentItem comment={root} />
+              {children.length > 0 && (
+                <div className="relative">
+                  {children.map(child => (
+                    <CommentItem key={child.id} comment={child} isReply={true} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
-          {comments.length === 0 && (
-            <motion.div variants={itemVariants} className="text-fbc-muted text-xs font-mono italic">
-              暂无记录。
-            </motion.div>
-          )}
-        </motion.div>
-      )}
+        {comments.length === 0 && (
+          <motion.div variants={itemVariants} className="text-fbc-muted text-xs font-mono italic">
+            暂无记录。
+          </motion.div>
+        )}
+      </motion.div>
     </div>
   );
 }

@@ -1,4 +1,3 @@
-// src/auth.ts
 import NextAuth from "next-auth"
 import GitHub from "next-auth/providers/github"
 import { PrismaAdapter } from "@auth/prisma-adapter"
@@ -12,17 +11,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.AUTH_GITHUB_SECRET,
     }),
   ],
-  trustHost: true, // 信任主机配置
+  trustHost: true,
   session: {
-    strategy: "database", // 使用数据库存储会话
+    strategy: "jwt",
   },
   callbacks: {
-    async session({ session, user }) {
-      // 注入用户 ID 到 session 对象
-      if (session.user && user) {
-        session.user.id = user.id;
+    async session({ session, token }) {
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
       }
       return session;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.sub = user.id;
+      }
+      return token;
     },
   },
 })

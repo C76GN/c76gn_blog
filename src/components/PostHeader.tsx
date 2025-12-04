@@ -6,14 +6,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { PostHeaderStats } from "@/components/Interactions";
 import { useSidebar } from "@/lib/sidebar-context";
+import type { PostStatsData } from "@/app/actions";
 
 interface PostHeaderProps {
   title: string;
   date: string;
   slug: string;
+  initialStats: PostStatsData;
 }
 
-export default function PostHeader({ title, date, slug }: PostHeaderProps) {
+export default function PostHeader({ title, date, slug, initialStats }: PostHeaderProps) {
   const [isSticky, setIsSticky] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const { isCollapsed } = useSidebar();
@@ -96,7 +98,7 @@ export default function PostHeader({ title, date, slug }: PostHeaderProps) {
                   <span className="w-2 h-2 bg-fbc-red shrink-0"></span>
                   <span className="hidden sm:inline">{date}</span>
                 </span>
-                <PostHeaderStats slug={slug} />
+                <PostHeaderStats slug={slug} initialStats={initialStats} />
               </div>
             </div>
           </div>
@@ -116,7 +118,7 @@ export default function PostHeader({ title, date, slug }: PostHeaderProps) {
             <span className="w-2 h-2 bg-fbc-red"></span>
             {date}
           </span>
-          <PostHeaderStats slug={slug} />
+          <PostHeaderStats slug={slug} initialStats={initialStats} />
         </div>
       </header>
 

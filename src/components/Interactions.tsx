@@ -2,73 +2,41 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useSession } from "next-auth/react";
-import { incrementView, getPostStats, toggleLike } from "@/app/actions";
+import { incrementView, toggleLike, type PostStatsData } from "@/app/actions";
 import { Eye, Heart, ThumbsUp } from "lucide-react";
 import GlitchText from "@/components/ui/GlitchText";
 import AuthStatusLoader from "@/components/ui/AuthStatusLoader";
 import { LoginButton } from "@/components/AuthButton";
 
-/**
- * 文章头部统计组件（只读）
- * 显示浏览量和点赞数，不可交互
- */
-export function PostHeaderStats({ slug }: { slug: string }) {
-  const [stats, setStats] = useState({ views: 0, likes: 0 });
-  const [isLoading, setIsLoading] = useState(true);
-
+export function PostHeaderStats({ slug, initialStats }: { slug: string, initialStats: PostStatsData }) {
   useEffect(() => {
     incrementView(slug);
-
-    const fetchStats = async () => {
-      try {
-        const data = await getPostStats(slug);
-        setStats({ views: data.views, likes: data.likes });
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setTimeout(() => setIsLoading(false), 500);
-      }
-    };
-
-    fetchStats();
   }, [slug]);
 
   return (
     <>
       <div className="flex items-center gap-2 text-fbc-muted" title="浏览量">
         <Eye className="w-3 h-3" />
-        <GlitchText text={stats.views} isLoading={isLoading} minWidth="min-w-[4ch]" />
+        <GlitchText text={initialStats.views} isLoading={false} minWidth="min-w-[4ch]" />
       </div>
       <div className="flex items-center gap-2 text-fbc-muted" title="点赞数">
         <Heart className="w-3 h-3" />
-        <GlitchText text={stats.likes} isLoading={isLoading} minWidth="min-w-[3ch]" />
+        <GlitchText text={initialStats.likes} isLoading={false} minWidth="min-w-[3ch]" />
       </div>
     </>
   );
 }
 
-/**
- * 文章底部点赞交互组件
- * 仅允许登录用户进行点赞操作，未登录用户显示登录提示
- */
-export function PostLikeAction({ slug }: { slug: string }) {
+export function PostLikeAction({ slug, initialStats }: { slug: string, initialStats: PostStatsData }) {
   const { data: session } = useSession();
-  const [likes, setLikes] = useState(0);
-  const [hasLiked, setHasLiked] = useState(false);
+  const [likes, setLikes] = useState(initialStats.likes);
+  const [hasLiked, setHasLiked] = useState(initialStats.hasLiked);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await getPostStats(slug);
-        setLikes(data.likes);
-        setHasLiked(data.hasLiked);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    fetchStats();
-  }, [slug, session]);
+    setLikes(initialStats.likes);
+    setHasLiked(initialStats.hasLiked);
+  }, [initialStats]);
 
   const handleLike = () => {
     if (!session) return;
@@ -108,10 +76,9 @@ export function PostLikeAction({ slug }: { slug: string }) {
               disabled={isPending}
               className={`
                 group relative flex items-center gap-3 px-8 py-3 font-mono text-sm border transition-all duration-300
-                ${
-                  hasLiked
-                    ? "bg-fbc-red text-white border-fbc-red shadow-[0_0_15px_rgba(255,51,51,0.3)]"
-                    : "bg-transparent text-fbc-text border-fbc-border hover:border-fbc-red hover:text-fbc-red"
+                ${hasLiked
+                  ? "bg-fbc-red text-white border-fbc-red shadow-[0_0_15px_rgba(255,51,51,0.3)]"
+                  : "bg-transparent text-fbc-text border-fbc-border hover:border-fbc-red hover:text-fbc-red"
                 }
               `}
             >
