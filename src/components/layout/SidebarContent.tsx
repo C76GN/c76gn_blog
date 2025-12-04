@@ -49,6 +49,7 @@ export default function SidebarContent({ dreams, poems }: { dreams: Post[]; poem
             <Link
               href={`/${category}/${post.slug}`}
               scroll={false}
+              prefetch={false}
               className={`
                 group flex items-center px-4 py-2 text-xs font-mono transition-all duration-200
                 ${active
