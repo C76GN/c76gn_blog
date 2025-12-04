@@ -1,94 +1,136 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useSession } from "next-auth/react";
 import { incrementView, getPostStats, toggleLike } from "@/app/actions";
-import { Eye, Heart } from "lucide-react";
+import { Eye, Heart, ThumbsUp } from "lucide-react";
+import GlitchText from "@/components/ui/GlitchText";
+import AuthStatusLoader from "@/components/ui/AuthStatusLoader";
+import { LoginButton } from "@/components/AuthButton";
 
-export default function Interactions({ slug, inline = false }: { slug: string; inline?: boolean }) {
-  const [stats, setStats] = useState({ views: 0, likes: 0, hasLiked: false });
+/**
+ * 文章头部统计组件（只读）
+ * 显示浏览量和点赞数，不可交互
+ */
+export function PostHeaderStats({ slug }: { slug: string }) {
+  const [stats, setStats] = useState({ views: 0, likes: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. 页面加载时增加浏览量
     incrementView(slug);
 
-    // 2. 获取最新数据
     const fetchStats = async () => {
-      const data = await getPostStats(slug);
-      setStats(data);
-      setIsLoading(false);
+      try {
+        const data = await getPostStats(slug);
+        setStats({ views: data.views, likes: data.likes });
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setTimeout(() => setIsLoading(false), 500);
+      }
     };
+
     fetchStats();
   }, [slug]);
 
-  const handleLike = async () => {
-    // 乐观更新 (Optimistic Update)：在服务器响应前预先更新 UI
-    setStats((prev) => ({
-      ...prev,
-      likes: prev.hasLiked ? prev.likes - 1 : prev.likes + 1,
-      hasLiked: !prev.hasLiked,
-    }));
-
-    try {
-      await toggleLike(slug);
-    } catch (error) {
-      // 请求失败时回滚状态
-      console.error("Like failed", error);
-    }
-  };
-
-  if (isLoading && !inline) return <div className="text-fbc-muted font-mono text-xs">加载数据中...</div>;
-
-  if (inline) {
-    return (
-      <>
-        {/* 浏览量 */}
-        <div className="flex items-center gap-2 text-fbc-muted" title="浏览量">
-          <Eye className="w-3 h-3" />
-          <span>{isLoading ? "..." : stats.views}</span>
-        </div>
-
-        {/* 点赞按钮 */}
-        <button
-          onClick={handleLike}
-          className={`flex items-center gap-2 transition-colors group ${stats.hasLiked ? "text-fbc-red" : "text-fbc-muted hover:text-fbc-red"
-            }`}
-          title="点赞"
-        >
-          <Heart
-            className={`w-3 h-3 transition-transform group-active:scale-90 ${stats.hasLiked ? "fill-current" : ""
-              }`}
-          />
-          <span>{isLoading ? "..." : stats.likes}</span>
-        </button>
-      </>
-    );
-  }
-
   return (
-    <div className="flex items-center gap-6 font-mono text-sm border-y border-fbc-border py-4 my-8">
-      {/* 浏览量 */}
+    <>
       <div className="flex items-center gap-2 text-fbc-muted" title="浏览量">
-        <Eye className="w-4 h-4" />
-        <span>{stats.views}</span>
+        <Eye className="w-3 h-3" />
+        <GlitchText text={stats.views} isLoading={isLoading} minWidth="min-w-[4ch]" />
       </div>
-
-      {/* 点赞按钮 */}
-      <button
-        onClick={handleLike}
-        className={`flex items-center gap-2 transition-colors group ${stats.hasLiked ? "text-fbc-red" : "text-fbc-muted hover:text-fbc-red"
-          }`}
-        title="点赞"
-      >
-        <Heart
-          className={`w-4 h-4 transition-transform group-active:scale-90 ${stats.hasLiked ? "fill-current" : ""
-            }`}
-        />
-        <span>{stats.likes}</span>
-      </button>
-
-      <div className="flex-1"></div>
-    </div>
+      <div className="flex items-center gap-2 text-fbc-muted" title="点赞数">
+        <Heart className="w-3 h-3" />
+        <GlitchText text={stats.likes} isLoading={isLoading} minWidth="min-w-[3ch]" />
+      </div>
+    </>
   );
 }
 
+/**
+ * 文章底部点赞交互组件
+ * 仅允许登录用户进行点赞操作，未登录用户显示登录提示
+ */
+export function PostLikeAction({ slug }: { slug: string }) {
+  const { data: session } = useSession();
+  const [likes, setLikes] = useState(0);
+  const [hasLiked, setHasLiked] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const data = await getPostStats(slug);
+        setLikes(data.likes);
+        setHasLiked(data.hasLiked);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchStats();
+  }, [slug, session]);
+
+  const handleLike = () => {
+    if (!session) return;
+
+    const newHasLiked = !hasLiked;
+    setHasLiked(newHasLiked);
+    setLikes((prev) => (newHasLiked ? prev + 1 : prev - 1));
+
+    startTransition(async () => {
+      try {
+        await toggleLike(slug);
+      } catch (error) {
+        setHasLiked(!newHasLiked);
+        setLikes((prev) => (!newHasLiked ? prev + 1 : prev - 1));
+        console.error("Like failed", error);
+      }
+    });
+  };
+
+  return (
+    <div className="my-12 py-8 border-y border-fbc-border/50 bg-fbc-dark/50 text-center">
+      <p className="text-xs font-mono text-fbc-muted uppercase mb-6 tracking-widest">
+        END
+      </p>
+
+      <p className="mb-6 text-sm font-bold text-fbc-text">
+        如果喜欢的话，就点个赞吧~
+      </p>
+
+      <div className="flex justify-center">
+        <AuthStatusLoader
+          isLoggedIn={!!session}
+          className="min-h-[48px]"
+          userContent={
+            <button
+              onClick={handleLike}
+              disabled={isPending}
+              className={`
+                group relative flex items-center gap-3 px-8 py-3 font-mono text-sm border transition-all duration-300
+                ${
+                  hasLiked
+                    ? "bg-fbc-red text-white border-fbc-red shadow-[0_0_15px_rgba(255,51,51,0.3)]"
+                    : "bg-transparent text-fbc-text border-fbc-border hover:border-fbc-red hover:text-fbc-red"
+                }
+              `}
+            >
+              <ThumbsUp className={`w-4 h-4 transition-transform duration-300 ${hasLiked ? "scale-110" : "group-hover:-rotate-12"}`} />
+              <span>{hasLiked ? "已点赞" : "点赞"}</span>
+              <span className="border-l border-current pl-3 ml-1 opacity-80">
+                {likes}
+              </span>
+            </button>
+          }
+          guestContent={
+            <div className="flex flex-col items-center gap-3">
+              <div className="scale-90">
+                <LoginButton />
+              </div>
+            </div>
+          }
+        />
+      </div>
+    </div>
+  );
+}

@@ -1,16 +1,16 @@
-// src/components/layout/SidebarContent.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Post } from '@/lib/mdx';
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  PanelLeftClose, 
-  PanelLeftOpen, 
-  Menu, 
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ChevronRight,
+  ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Menu,
   X,
   BookOpen,
   Feather
@@ -20,47 +20,39 @@ import { useSidebar } from '@/lib/sidebar-context';
 export default function SidebarContent({ dreams, poems }: { dreams: Post[]; poems: Post[] }) {
   const pathname = usePathname();
   const { isCollapsed, toggleSidebar, isMobileOpen, toggleMobileSidebar } = useSidebar();
-  
-  // 控制分组折叠状态 (默认全展开)
+
   const [groupsState, setGroupsState] = useState({
     dreams: true,
     poems: true
   });
 
-  // 用于点击标题时滚动到顶部
   const dreamsRef = useRef<HTMLDivElement>(null);
   const poemsRef = useRef<HTMLDivElement>(null);
 
   const toggleGroup = (group: 'dreams' | 'poems', ref: React.RefObject<HTMLDivElement | null>) => {
-    // 展开分组时，若元素不在视口顶部则自动滚动
     if (groupsState[group] && ref.current) {
       ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    
     setGroupsState(prev => ({ ...prev, [group]: !prev[group] }));
   };
 
-  // 路由变化时，自动关闭移动端菜单
   useEffect(() => {
     toggleMobileSidebar(false);
   }, [pathname, toggleMobileSidebar]);
 
-  // 判断链接是否激活
-  const isActive = (slug: string) => pathname.includes(slug);
-
-  // 渲染文章列表项
   const renderPostList = (posts: Post[], category: string) => (
     <ul className="space-y-0.5 pb-4">
       {posts.map((post) => {
-        const active = isActive(post.slug);
+        const active = pathname === `/${category}/${post.slug}`;
         return (
           <li key={post.slug}>
-            <Link 
+            <Link
               href={`/${category}/${post.slug}`}
+              scroll={false}
               className={`
                 group flex items-center px-4 py-2 text-xs font-mono transition-all duration-200
-                ${active 
-                  ? 'bg-fbc-red/10 text-fbc-red border-l-2 border-fbc-red' 
+                ${active
+                  ? 'bg-fbc-red/10 text-fbc-red border-l-2 border-fbc-red'
                   : 'text-fbc-muted hover:text-fbc-text hover:bg-fbc-gray border-l-2 border-transparent hover:border-fbc-yellow'
                 }
               `}
@@ -69,7 +61,6 @@ export default function SidebarContent({ dreams, poems }: { dreams: Post[]; poem
               <span className={`truncate ${isCollapsed ? 'hidden' : 'block'}`}>
                 {post.metadata.title || post.slug}
               </span>
-              {/* 折叠模式下显示的小圆点 */}
               {isCollapsed && (
                 <div className={`w-1.5 h-1.5 rounded-full mx-auto ${active ? 'bg-fbc-red' : 'bg-fbc-muted'}`} />
               )}
@@ -82,33 +73,34 @@ export default function SidebarContent({ dreams, poems }: { dreams: Post[]; poem
 
   return (
     <>
-      {/* --- 移动端浮动按钮 (仅在移动端且菜单关闭时显示) --- */}
-      <button 
+      <button
         onClick={() => toggleMobileSidebar(true)}
         className={`md:hidden fixed top-4 left-4 z-50 p-2 bg-fbc-dark border border-fbc-border text-fbc-text shadow-lg ${isMobileOpen ? 'hidden' : 'block'}`}
       >
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* --- 移动端遮罩层 --- */}
       {isMobileOpen && (
-        <div 
+        <div
           className="md:hidden fixed inset-0 bg-black/80 z-40 backdrop-blur-sm transition-opacity"
           onClick={() => toggleMobileSidebar(false)}
         />
       )}
 
-      {/* --- 侧边栏容器 --- */}
-      <aside 
+      <motion.aside
+        initial={{ x: "-100%", opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: "-100%", opacity: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
         className={`
-          fixed top-0 left-0 h-full bg-fbc-dark border-r border-fbc-border z-50 transition-all duration-300 flex flex-col
-          ${isMobileOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0'}
+          fixed top-0 left-0 h-full bg-fbc-dark border-r border-fbc-border z-50 flex flex-col
+          ${isMobileOpen ? 'translate-x-0 w-64' : 'hidden md:flex'}
           ${isCollapsed ? 'md:w-16' : 'md:w-64'}
+          md:transition-[width] md:duration-300
         `}
       >
-        {/* 1. 顶部固定区域：Logo */}
         <div className="flex-none p-4 border-b border-fbc-border flex items-center justify-between h-16">
-          <Link href="/" className="overflow-hidden flex items-center">
+          <Link href="/" scroll={false} className="overflow-hidden flex items-center">
             {isCollapsed ? (
               <span className="text-xl font-black text-fbc-red mx-auto">C.</span>
             ) : (
@@ -117,8 +109,7 @@ export default function SidebarContent({ dreams, poems }: { dreams: Post[]; poem
               </h1>
             )}
           </Link>
-          {/* 移动端关闭按钮 */}
-          <button 
+          <button
             onClick={() => toggleMobileSidebar(false)}
             className="md:hidden text-fbc-muted hover:text-fbc-red"
           >
@@ -126,13 +117,9 @@ export default function SidebarContent({ dreams, poems }: { dreams: Post[]; poem
           </button>
         </div>
 
-        {/* 2. 中间滚动区域：导航列表 */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          
-          {/* 分组：梦 */}
           <div ref={dreamsRef} className="relative">
-            {/* 吸顶标题 */}
-            <div 
+            <div
               onClick={() => !isCollapsed && toggleGroup('dreams', dreamsRef)}
               className={`
                 sticky top-0 z-10 bg-fbc-dark/95 backdrop-blur border-b border-fbc-border/50
@@ -150,16 +137,13 @@ export default function SidebarContent({ dreams, poems }: { dreams: Post[]; poem
                 </span>
               )}
             </div>
-            {/* 列表内容 */}
             <div className={`overflow-hidden transition-all duration-300 ${groupsState.dreams || isCollapsed ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
               {renderPostList(dreams, 'dreams')}
             </div>
           </div>
 
-          {/* 分组：诗 */}
           <div ref={poemsRef} className="relative border-t border-fbc-border">
-            {/* 吸顶标题 */}
-            <div 
+            <div
               onClick={() => !isCollapsed && toggleGroup('poems', poemsRef)}
               className={`
                 sticky top-0 z-10 bg-fbc-dark/95 backdrop-blur border-b border-fbc-border/50
@@ -177,15 +161,12 @@ export default function SidebarContent({ dreams, poems }: { dreams: Post[]; poem
                 </span>
               )}
             </div>
-            {/* 列表内容 */}
             <div className={`overflow-hidden transition-all duration-300 ${groupsState.poems || isCollapsed ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
               {renderPostList(poems, 'poems')}
             </div>
           </div>
-
         </div>
 
-        {/* 3. 底部固定区域：折叠开关 (仅桌面端) */}
         <div className="flex-none p-3 border-t border-fbc-border hidden md:flex justify-end bg-fbc-dark">
           <button
             onClick={toggleSidebar}
@@ -195,7 +176,7 @@ export default function SidebarContent({ dreams, poems }: { dreams: Post[]; poem
             {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
           </button>
         </div>
-      </aside>
+      </motion.aside>
     </>
   );
 }

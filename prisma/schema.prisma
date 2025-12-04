@@ -76,8 +76,13 @@ model Comment {
   postSlug  String
   post      PostStat @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
 
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children  Comment[] @relation("CommentReplies")
+
   @@index([userId])
   @@index([postSlug])
+  @@index([parentId])
 }
 
 // 点赞记录

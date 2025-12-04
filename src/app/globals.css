@@ -46,21 +46,34 @@
   全局基础样式 
 */
 :root {
-  /* 强制深色模式变量 */
   --background: var(--color-fbc-dark);
   --foreground: var(--color-fbc-text);
+}
+
+html {
+  scrollbar-gutter: stable;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  /* CRT 显示器微发光质感 */
   text-shadow: 0 0 1px rgba(224, 224, 224, 0.1);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
-/* 滚动条美化 (机密文档风格) */
+/* 隐藏滚动条但保留功能的工具类 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 全局滚动条美化 (仅针对未隐藏的地方) */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -77,5 +90,4 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-fbc-red);
-  /* 悬浮变红 */
 }

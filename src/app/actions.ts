@@ -118,8 +118,8 @@ export async function toggleLike(slug: string) {
   revalidatePath(`/${slug}`);
 }
 
-// 发表评论
-export async function postComment(slug: string, content: string) {
+// 发表评论（支持回复）
+export async function postComment(slug: string, content: string, parentId?: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("未授权");
   if (!content.trim()) return;
@@ -131,28 +131,37 @@ export async function postComment(slug: string, content: string) {
     update: {},
   });
 
+  // 如果有 parentId，验证其是否存在
+  if (parentId) {
+    const parent = await prisma.comment.findUnique({ where: { id: parentId } });
+    if (!parent) throw new Error("回复的评论不存在");
+  }
+
   await prisma.comment.create({
     data: {
       content,
       userId: session.user.id,
       postSlug: slug,
+      parentId: parentId || null,
     },
   });
 
   revalidatePath(`/${slug}`);
 }
 
-// 获取评论列表
+// 获取评论列表（包含用户信息）
 export async function getComments(slug: string) {
-  return await prisma.comment.findMany({
+  const comments = await prisma.comment.findMany({
     where: { postSlug: slug },
     include: {
       user: {
         select: { name: true, image: true },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "asc" },
   });
+
+  return comments;
 }
 
 // 获取文章的所有标签

@@ -108,6 +108,7 @@ export default function PostList({ dreams, poems }: PostListProps) {
             <Link
               key={post.slug}
               href={`/${activeCategory}/${post.slug}`}
+              scroll={false}
               className="block bg-fbc-gray p-6 border border-fbc-border hover:border-fbc-yellow transition-all duration-200 group"
             >
               <div className="flex items-start justify-between gap-4">
